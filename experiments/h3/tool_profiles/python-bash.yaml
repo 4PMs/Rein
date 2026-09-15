@@ -1,9 +1,0 @@
-profile: python-bash
-factor_python: true
-factor_bash: true
-command_tools:
-  - python3
-  - bash
-native_actions:
-  - http_request
-  - done

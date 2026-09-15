@@ -1,9 +1,0 @@
-profile: full
-command_tools:
-  - python3
-  - bash
-  - curl
-  - nmap
-native_actions:
-  - http_request
-  - done
