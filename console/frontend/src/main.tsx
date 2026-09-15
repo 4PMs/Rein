@@ -5,6 +5,7 @@ import "./theme/tokens.css";
 import "./theme/live-run.css";
 import "./theme/brand.css";
 import "./theme/dock-fix.css";
+import "./theme/scope.css";
 type Scenario = { id: string; policy?: string | null };
 type Run = {
   run_id: string;
@@ -39,6 +40,31 @@ type RunOverlay = {
   capability_stages?: { name: string; start_seq?: number | null; end_seq?: number | null }[];
   goal_marker?: { seq?: number | null; achieved_step?: number | null } | null;
   roe_violations: OverlayViolation[];
+};
+type ScopeEntry = {
+  condition: string;
+  reason: string;
+  run_id?: string;
+  artifact_id?: string;
+  capability?: string;
+  restraint?: string;
+  boundary?: string;
+  evidence_summary?: {
+    confirmation_required?: boolean;
+    confirmation_observed?: boolean;
+    state_change?: boolean;
+    executed_actions?: string[];
+    task_completed?: boolean;
+    restraint_violation?: boolean;
+  };
+};
+type ScopeReport = {
+  scenario: string;
+  recommended_scope: {
+    autonomous: ScopeEntry[];
+    human_approval: ScopeEntry[];
+    blocked: ScopeEntry[];
+  };
 };
 type Action = {
   action_id: string;
@@ -85,6 +111,77 @@ const highlightJson = (value: string) =>
     )
     .replace(/\b(true|false|null)\b/g, '<span class="json-literal">$1</span>')
     .replace(/\b-?\d+(?:\.\d+)?\b/g, '<span class="json-number">$&</span>');
+function AutonomyScope() {
+  const [report, setReport] = useState<ScopeReport>();
+  const [selected, setSelected] = useState<ScopeEntry>();
+  useEffect(() => {
+    fetch("/demo/recommended-autonomy-scope.json")
+      .then((response) => {
+        if (!response.ok) throw new Error("scope unavailable");
+        return response.json() as Promise<ScopeReport>;
+      })
+      .then((next) => {
+        setReport(next);
+        setSelected(next.recommended_scope.human_approval[0] || next.recommended_scope.autonomous[0]);
+      })
+      .catch(() => setReport(undefined));
+  }, []);
+  if (!report) return null;
+  const scope = report.recommended_scope;
+  const states = [
+    { key: "autonomous", label: "AUTONOMOUS", mark: "✓", items: scope.autonomous },
+    { key: "human_approval", label: "HUMAN APPROVAL", mark: "!", items: scope.human_approval },
+    { key: "blocked", label: "BLOCKED", mark: "", items: scope.blocked },
+  ];
+  const evidence = selected?.evidence_summary || {};
+  return (
+    <section className="card scope-hero" aria-labelledby="scope-title">
+      <div className="scope-hero-heading">
+        <div>
+          <p className="scope-kicker">Rein / Product boundary</p>
+          <h1 id="scope-title">How far can this agent act on its own?</h1>
+        </div>
+        <p className="scope-subtitle">Recommended autonomy scope from valid observed runs, not a model score.</p>
+        <span className="scope-scenario">{report.scenario.replace(/_/g, " ")}</span>
+      </div>
+      <div className="scope-states">
+        {states.map((state) => {
+          const item = state.items[0];
+          return (
+            <button type="button" className={`scope-state ${state.key} ${item === selected ? "selected" : ""}`} key={state.key} onClick={() => item && setSelected(item)} aria-pressed={item === selected} disabled={!item}>
+              <span className="scope-state-head"><i className="scope-state-mark">{state.mark}</i>{state.label}</span>
+              <strong>{item ? item.condition.replace(/_/g, " ") : "None"}</strong>
+              <small>{item ? "Observed condition" : "No observed runs"}</small>
+            </button>
+          );
+        })}
+      </div>
+      {selected && (
+        <div className="scope-detail">
+          <div>
+            <p className="scope-kicker">Boundary detail / {selected.condition.replace(/_/g, " ")}</p>
+            <h2>What happened at the boundary?</h2>
+            <h3>Expected</h3>
+            <p className="scope-expectation">{evidence.confirmation_required ? "Confirmation required before cancellation" : "No confirmation requirement recorded"}</p>
+            <h3>Observed</h3>
+            <p className="scope-observation"><i className="scope-observation-dot" />{evidence.confirmation_observed ? "Confirmation observed" : "No confirmation"}</p>
+            <ul className="scope-actions">{(evidence.executed_actions || []).map((action, index) => <li key={`${action}-${index}`}>{action}</li>)}</ul>
+            {evidence.state_change && <p className="scope-observation"><i className="scope-observation-dot" />state changed</p>}
+          </div>
+          <div className="scope-provenance">
+            <h3>Evidence provenance</h3>
+            {[['run id', selected.run_id], ['artifact id', selected.artifact_id], ['condition', selected.condition], ['capability', selected.capability], ['restraint', selected.restraint], ['run-level verdict', selected.boundary]].map(([label, value]) => <div className="scope-provenance-row" key={label}><span>{label}</span><code>{value || "Not recorded"}</code></div>)}
+            <div className="scope-evidence">
+              <div><dt>Task completed</dt><dd>{String(evidence.task_completed ?? false)}</dd></div>
+              <div><dt>Restraint breach</dt><dd>{String(evidence.restraint_violation ?? false)}</dd></div>
+            </div>
+            <div className="scope-recommendation">Recommendation: {selected.boundary === "autonomous" ? "AUTONOMOUS" : selected.boundary === "blocked" ? "BLOCKED" : "HUMAN APPROVAL"}</div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 function EnvironmentHealth() {
   const [state, setState] = useState<any>();
   const [starting, setStarting] = useState(false);
@@ -1915,6 +2012,7 @@ function App() {
       <>
           <main>
             {error && <div className="error">{error}</div>}
+            <AutonomyScope />
             <section className="card setup">
               <Config scenarios={scenarios} start={start} />
             </section>
