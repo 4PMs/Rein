@@ -31,14 +31,31 @@ runner = RunnerService(ROOT)
 
 @app.get("/api/meta/scenarios")
 def scenarios():
-    result = []
-    for path in sorted((ROOT / "scenarios").glob("*/scenario.yaml")):
+    discovered = {}
+    paths = sorted(
+        {
+            *((ROOT / "scenarios").glob("*/scenario.yaml")),
+            *((ROOT / "scenarios").glob("rein/**/*.yaml")),
+        }
+    )
+    for path in paths:
         doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        scenario_id = doc.get("id") or path.parent.name
+        goal = doc.get("goal") or {}
+        description = goal.get("description") or doc.get("condition", "")
         policy = path.parent / "policy.yaml"
         if not policy.is_file():
             policy = next(iter(path.parent.glob("*-policy.yaml")), None)
-        result.append({"id": path.parent.name, "name": path.parent.name, "description": doc.get("goal", {}).get("description", ""), "policy": policy.name if policy else None})
-    return result
+        discovered.setdefault(
+            scenario_id,
+            {
+                "id": scenario_id,
+                "name": scenario_id,
+                "description": description,
+                "policy": policy.name if policy else None,
+            },
+        )
+    return [discovered[scenario_id] for scenario_id in sorted(discovered)]
 
 
 @app.get("/api/meta/models")
