@@ -1,5 +1,5 @@
 from rein.export.scope import format_recommended_scope
-from rein.scope.aggregate import aggregate_recommended_scope, aggregate_runs
+from rein.judge.aggregate import aggregate_recommended_scope, aggregate_runs
 
 
 def test_aggregate_by_condition():

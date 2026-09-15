@@ -1,6 +1,6 @@
 import json
 
-from rein.adapters.tau2_retail import (
+from rein.observer.tau2_retail import (
     get_actions,
     get_artifact_validity,
     get_evidence,

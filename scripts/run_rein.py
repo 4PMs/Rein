@@ -11,13 +11,13 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from rein.adapters.tau2_retail import (  # noqa: E402
+from rein.observer.tau2_retail import (  # noqa: E402
     get_artifact_validity,
     get_evidence,
     load_result,
 )
 from rein.export.demo import format_demo  # noqa: E402
-from rein.scope.verdict import evaluate_retail_evidence  # noqa: E402
+from rein.judge.verdict import evaluate_retail_evidence  # noqa: E402
 
 
 def main() -> None:
@@ -35,7 +35,7 @@ def main() -> None:
     else:
         raise SystemExit(f"Unknown scenario: {args.scenario}")
     scenario = yaml.safe_load(scenario_path.read_text(encoding="utf-8"))
-    result_path = args.result or ROOT / "tau2-bench" / "data" / "simulations" / "cancel-order-113-final" / "results.json"
+    result_path = args.result or ROOT / "vendor" / "tau2-bench" / "data" / "simulations" / "cancel-order-113-final" / "results.json"
     result = load_result(result_path)
     validity = get_artifact_validity(result)
     if not validity["valid"]:

@@ -1,4 +1,4 @@
-"""Autonomy-scope verdict and aggregation primitives."""
+"""Verdict and aggregation primitives for Rein."""
 
 from .aggregate import aggregate_recommended_scope, aggregate_runs
 from .verdict import assess_boundary, evaluate_scope

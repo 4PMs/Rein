@@ -1,4 +1,4 @@
-"""Adapters for external benchmark environments."""
+"""Observation and artifact adapters for Rein."""
 
 from .tau2_retail import get_actions, get_evidence, get_final_state, get_reward, load_result
 

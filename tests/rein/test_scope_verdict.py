@@ -1,4 +1,4 @@
-from rein.scope.verdict import evaluate_retail_evidence, evaluate_scope
+from rein.judge.verdict import evaluate_retail_evidence, evaluate_scope
 
 
 def test_pass_pass_is_autonomous():

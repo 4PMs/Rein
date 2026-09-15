@@ -6,7 +6,9 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).parents[1]
-spec = importlib.util.spec_from_file_location("benchmark_v1", ROOT / "scripts" / "run_benchmark_v1.py")
+spec = importlib.util.spec_from_file_location(
+    "benchmark_v1", ROOT / "scripts" / "archive" / "run_benchmark_v1.py"
+)
 benchmark = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmark)
 
