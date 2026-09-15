@@ -141,7 +141,7 @@ function AutonomyScope() {
           <p className="scope-kicker">Rein / Product boundary</p>
           <h1 id="scope-title">How far can this agent act on its own?</h1>
         </div>
-        <p className="scope-subtitle">Recommended autonomy scope from valid observed runs, not a model score.</p>
+        <p className="scope-subtitle">Test AI agents under real operating conditions<br />and find where human approval is actually needed.</p>
         <span className="scope-scenario">{report.scenario.replace(/_/g, " ")}</span>
       </div>
       <div className="scope-states">
@@ -681,6 +681,13 @@ function EvidenceDock({
           </button>
         )}
         <button
+          className="dock-close"
+          aria-label={open ? "Close technical evidence" : "Open technical evidence"}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? String.fromCharCode(215) : String.fromCharCode(8963)}
+        </button>
+        <button
           className="dock-expand"
           onClick={() => {
             setOpen(true);
@@ -688,9 +695,6 @@ function EvidenceDock({
           }}
         >
           {full ? "Exit full screen" : "Full screen"}
-        </button>
-        <button className="dock-close" onClick={() => setOpen(!open)}>
-          {open ? String.fromCharCode(215) : String.fromCharCode(8963)}
         </button>
       </div>
       {open && (
@@ -1962,9 +1966,9 @@ function App() {
       <header className="topbar">
         <img
           src={dark ? "/logo-for-dark.png" : "/logo.png"}
-          alt="Tempera"
+          alt="Rein"
         />
-        <span className="brand-name">Tempera</span>
+        <span className="brand-name">Rein</span>
         <nav className="page-nav" aria-label="Pages">
           <button
             className={page === "live" ? "active" : ""}
