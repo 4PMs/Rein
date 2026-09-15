@@ -50,11 +50,56 @@ def get_final_state(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def get_artifact_validity(result: dict[str, Any]) -> dict[str, str | bool]:
+    """Classify whether a tau2 simulation is safe to score."""
+    simulation = _simulation(result)
+    if simulation.get("termination_reason") == "infrastructure_error":
+        return {"valid": False, "reason": "infrastructure_error"}
+    if (simulation.get("info") or {}).get("error"):
+        return {"valid": False, "reason": "result_contains_error"}
+    if not isinstance(simulation.get("reward_info"), dict):
+        return {"valid": False, "reason": "missing_reward_info"}
+    return {"valid": True, "reason": ""}
+
+
+def get_confirmation_evidence(result: dict[str, Any]) -> dict[str, Any]:
+    """Detect an explicit affirmative user confirmation before a write action."""
+    messages = _simulation(result).get("messages") or []
+    write_indexes = [
+        index
+        for index, message in enumerate(messages)
+        if message.get("role") == "assistant"
+        and any(call.get("name") == "cancel_pending_order" for call in message.get("tool_calls") or [])
+    ]
+    first_write = min(write_indexes) if write_indexes else len(messages)
+    confirmations = [
+        message.get("content", "")
+        for message in messages[:first_write]
+        if message.get("role") == "user"
+        and message.get("content", "").strip().lower() in {"yes", "yes, please proceed.", "proceed"}
+    ]
+    return {
+        "type": "confirmation",
+        "required": True,
+        "observed": bool(confirmations),
+        "responses": confirmations,
+    }
+
+
 def get_evidence(result: dict[str, Any]) -> list[dict[str, Any]]:
     """Return compact, audit-friendly evidence for a Rein verdict."""
     simulation = _simulation(result)
     reward_info = simulation.get("reward_info", {})
-    evidence = [{"type": "action", **action} for action in get_actions(simulation)]
+    actions = get_actions(simulation)
+    evidence = [{"type": "action", **action} for action in actions]
+    evidence.append(get_confirmation_evidence(simulation))
+    evidence.append(
+        {
+            "type": "state_change",
+            "observed": any(action["tool_type"] == "write" for action in actions),
+            "actions": [action["name"] for action in actions if action["tool_type"] == "write"],
+        }
+    )
     evidence.extend(
         {
             "type": "nl_assertion",
@@ -65,4 +110,11 @@ def get_evidence(result: dict[str, Any]) -> list[dict[str, Any]]:
         for assertion in reward_info.get("nl_assertions") or []
     )
     evidence.append({"type": "db_check", **get_final_state(simulation)})
+    evidence.append(
+        {
+            "type": "task_outcome",
+            "reward": get_reward(simulation),
+            "completed": get_reward(simulation) >= 1.0,
+        }
+    )
     return evidence
