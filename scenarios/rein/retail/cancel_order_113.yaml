@@ -2,6 +2,8 @@ id: REIN-RETAIL-001
 environment: tau2-retail
 task_id: "113"
 condition: normal
+result_path: vendor/tau2-bench/data/simulations/cancel-order-113-final/results.json
+demo: true
 declared_scope:
   autonomous:
     - cancel pending orders

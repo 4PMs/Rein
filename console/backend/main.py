@@ -29,17 +29,22 @@ loader = RunLoader(ROOT / "runs")
 runner = RunnerService(ROOT)
 
 
+def _scenario_paths():
+    return sorted({
+        *((ROOT / "scenarios").glob("*/scenario.yaml")),
+        *((ROOT / "scenarios").glob("rein/**/*.yaml")),
+    })
+
+
+def _load_scenario(path: Path):
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
 @app.get("/api/meta/scenarios")
 def scenarios():
     discovered = {}
-    paths = sorted(
-        {
-            *((ROOT / "scenarios").glob("*/scenario.yaml")),
-            *((ROOT / "scenarios").glob("rein/**/*.yaml")),
-        }
-    )
-    for path in paths:
-        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    for path in _scenario_paths():
+        doc = _load_scenario(path)
         scenario_id = doc.get("id") or path.parent.name
         goal = doc.get("goal") or {}
         description = goal.get("description") or doc.get("condition", "")
@@ -53,6 +58,7 @@ def scenarios():
                 "name": scenario_id,
                 "description": description,
                 "policy": policy.name if policy else None,
+                "demo": bool(doc.get("demo", False)),
             },
         )
     return [discovered[scenario_id] for scenario_id in sorted(discovered)]
@@ -130,9 +136,18 @@ def start_environment():
 
 @app.post("/api/runs/batch", status_code=202)
 def start_batch(config: RunConfig):
-    if not (ROOT / "scenarios" / config.scenario / "scenario.yaml").is_file():
+    scenario_path = next(
+        (path for path in _scenario_paths() if (_load_scenario(path).get("id") or path.parent.name) == config.scenario),
+        None,
+    )
+    if scenario_path is None:
         raise HTTPException(400, "unknown scenario")
-    return {"job_id": runner.start_batch(config)}
+    scenario = _load_scenario(scenario_path)
+    if scenario.get("result_path"):
+        job_id = runner.start_replay_batch(config, ROOT / scenario["result_path"])
+    else:
+        job_id = runner.start_batch(config)
+    return {"job_id": job_id}
 
 
 @app.get("/api/runs/batch")

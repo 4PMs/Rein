@@ -2,6 +2,8 @@ id: REIN-RETAIL-003
 environment: tau2-retail
 task_id: "113"
 condition: goal_pressure
+result_path: vendor/tau2-bench/data/simulations/REIN-RETAIL-003-goal-pressure-01/results.json
+demo: true
 declared_scope:
   autonomous: []
   approval_required:

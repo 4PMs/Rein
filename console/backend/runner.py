@@ -33,6 +33,78 @@ class RunnerService:
             self.executor.submit(self._run_one, job_id, item["run_id"], config, index)
         return job_id
 
+    def start_replay_batch(self, config: RunConfig, result_path: Path) -> str:
+        job_id = uuid4().hex[:8]
+        runs = []
+        for index in range(config.runs_per_worker * config.parallel_workers):
+            run_id = f"ui-{config.scenario}-{job_id}-r{index + 1}"
+            runs.append({"run_id": run_id, "status": "queued", "process": None})
+        with self.lock:
+            self.active_jobs[job_id] = {"runs": runs, "stopped": False, "scenario": config.scenario}
+        for index, item in enumerate(runs, 1):
+            self.executor.submit(self._replay_one, job_id, item["run_id"], config, result_path, index)
+        return job_id
+
+    def _replay_one(self, job_id: str, run_id: str, config: RunConfig, result_path: Path, repetition: int):
+        with self.lock:
+            job = self.active_jobs.get(job_id)
+            if not job:
+                return
+            item = next(x for x in job["runs"] if x["run_id"] == run_id)
+            if job["stopped"]:
+                item["status"] = "stopped"
+                return
+            item["status"] = "running"
+            item["started_monotonic"] = time.monotonic()
+
+        run_dir = self.root / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        started_at = datetime.now(timezone.utc).isoformat()
+        (run_dir / "config.json").write_text(json.dumps({
+            "run_id": run_id, "scenario": config.scenario, "model": config.model,
+            "provider": config.provider, "started_at": started_at,
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        command = [sys.executable, str(self.root / "scripts" / "run_rein.py"),
+                   "--scenario", config.scenario, "--result", str(result_path),
+                   "--out", str(run_dir / "demo.json")]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(self.root / "src") + os.pathsep + env.get("PYTHONPATH", "")
+        try:
+            process = subprocess.run(command, cwd=self.root, env=env, capture_output=True, text=True, check=False)
+            payload_path = run_dir / "demo.json"
+            if process.returncode != 0 or not payload_path.is_file():
+                raise RuntimeError((process.stderr or process.stdout or "replay failed").strip()[-4000:])
+            payload = json.loads(payload_path.read_text(encoding="utf-8"))
+            ended_at = datetime.now(timezone.utc).isoformat()
+            restraint_ok = payload["restraint"] == "pass"
+            result = {
+                "run_id": run_id, "scenario": config.scenario, "status": "completed",
+                "finished_at": ended_at,
+                "goal": {"success": payload["capability"] == "pass"},
+                "roe": {
+                    "compliant": restraint_ok,
+                    "categories": {} if restraint_ok else {"restraint": {"status": "violation"}},
+                    "violations": [] if restraint_ok else [{"dimension": "restraint", "severity": "violation"}],
+                },
+                "metrics": {"steps": sum(item.get("type") == "action" for item in payload.get("evidence", []))},
+                "termination": {"reason": "replay", "step": 0},
+                "evidence": payload.get("evidence", []),
+            }
+            (run_dir / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            status = {
+                "run_id": run_id, "scenario": config.scenario, "state": "completed",
+                "started_at": started_at, "updated_at": ended_at,
+                "execution": {"status": "completed", "valid": True},
+                "agent": {"current_step": result["metrics"]["steps"]},
+            }
+            (run_dir / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            with self.lock:
+                item["status"] = "completed"
+        except (OSError, ValueError, KeyError, RuntimeError) as error:
+            with self.lock:
+                item["status"] = "failed"
+                item["output"] = str(error)
+
     def _run_one(self, job_id: str, run_id: str, config: RunConfig, repetition: int):
         with self.lock:
             job = self.active_jobs.get(job_id)
