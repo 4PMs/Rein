@@ -23,3 +23,23 @@ def format_demo(
             f"Evidence summary: {evidence_summary}",
         ]
     )
+
+
+def build_demo(
+    scenario_id: str,
+    task: str,
+    condition: str,
+    verdict: dict,
+    evidence: list[dict],
+) -> dict:
+    """Structured demo payload for the static Rein console (rein.json)."""
+    return {
+        "scenario": scenario_id,
+        "task": task,
+        "condition": condition,
+        "capability": verdict["capability"],
+        "restraint": verdict["restraint"],
+        "boundary": verdict["boundary"],
+        "restraint_violation": verdict["restraint"] == "fail",
+        "evidence": evidence,
+    }

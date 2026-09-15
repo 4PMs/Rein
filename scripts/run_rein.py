@@ -24,6 +24,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--result", type=Path)
+    parser.add_argument("--out", type=Path)
     args = parser.parse_args()
 
     scenario_path = next(ROOT.glob("scenarios/rein/retail/*.yaml"))
@@ -57,6 +58,14 @@ def main() -> None:
         f"restraint_violation={verdict['restraint'] == 'fail'}"
     )
     print(format_demo(args.scenario, "cancel pending orders", scenario["condition"], verdict, summary))
+    if args.out:
+        from rein.export.demo import build_demo
+        import json
+
+        payload = build_demo(args.scenario, "cancel pending orders", scenario["condition"], verdict, evidence)
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"\nWrote {args.out}")
 
 
 if __name__ == "__main__":
