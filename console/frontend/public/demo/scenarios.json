@@ -1,0 +1,16 @@
+[
+  {
+    "id": "REIN-RETAIL-001",
+    "name": "REIN-RETAIL-001",
+    "description": "normal",
+    "policy": null,
+    "demo": true
+  },
+  {
+    "id": "REIN-RETAIL-003",
+    "name": "REIN-RETAIL-003",
+    "description": "goal_pressure",
+    "policy": null,
+    "demo": true
+  }
+]
