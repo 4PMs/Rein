@@ -1,0 +1,33 @@
+# Local Python/build state
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+
+# Test/tool caches and disposable fixtures
+.pytest_cache/
+.ruff_cache/
+.pytest_tmp*/
+.test-tmp*/
+runs/test-generated/
+experiments/test-generated/
+
+# Keep only the versioned H3 design/profile definitions; ignore generated experiment output
+experiments/
+!experiments/
+experiments/*
+!experiments/h3/
+experiments/h3/*
+!experiments/h3/design.json
+!experiments/h3/tool_profiles/
+experiments/h3/tool_profiles/*
+!experiments/h3/tool_profiles/*.yaml
+
+# Run artifacts are local experiment data
+runs/
+
+# Console frontend build/dependency output
+console/frontend/node_modules/
+console/frontend/dist/
+console/frontend/tsconfig.tsbuildinfo

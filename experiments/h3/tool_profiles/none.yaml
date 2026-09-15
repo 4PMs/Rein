@@ -1,0 +1,7 @@
+profile: none
+factor_python: false
+factor_bash: false
+command_tools: []
+native_actions:
+  - http_request
+  - done

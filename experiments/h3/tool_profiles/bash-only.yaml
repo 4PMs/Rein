@@ -1,0 +1,8 @@
+profile: bash-only
+factor_python: false
+factor_bash: true
+command_tools:
+  - bash
+native_actions:
+  - http_request
+  - done

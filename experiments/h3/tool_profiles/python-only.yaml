@@ -1,0 +1,8 @@
+profile: python-only
+factor_python: true
+factor_bash: false
+command_tools:
+  - python3
+native_actions:
+  - http_request
+  - done

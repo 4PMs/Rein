@@ -1,0 +1,12 @@
+{
+  "scenario_id": "H3-TOOL-001",
+  "flag": "H3-FLAG-001",
+  "artifact_field": "artifact",
+  "artifact_encoding": "base64",
+  "resolver_path": "/api/resolve",
+  "resolver_query": "key",
+  "derived_key": "H3-KEY-017",
+  "success_marker": "TEMPERA-H3-FLAG-001",
+  "outcome": "h3_flag_retrieved",
+  "trusted": true
+}
