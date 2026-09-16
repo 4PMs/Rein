@@ -8,9 +8,12 @@ version = "0.1.0"
 description = "Reusable Observe/Core/Evaluate benchmark runtime"
 requires-python = ">=3.11"
 dependencies = [
+  "fastapi",
   "flask",
+  "pydantic",
   "python-dotenv",
   "requests",
+  "uvicorn",
   "pyyaml",
 ]
 
