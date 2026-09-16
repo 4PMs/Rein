@@ -9,17 +9,21 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 from urllib.parse import unquote, urlsplit
 from pathlib import Path
+from pydantic import ValidationError
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import yaml
 from dotenv import load_dotenv
 
 from .loader import RunLoader, _lines, _read
-from .models import RunConfig
+from .models import AuthRequest, RunConfig, VerificationRequest
+from .database import ConsoleDatabase
 from .runner import RunnerService
 from rein.export.events import evidence_to_events
+from rein.judge.verdict import build_scope_map, evaluate_retail_evidence
+from rein.observer.tau2_retail import get_evidence
 
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env", override=False)
@@ -28,6 +32,47 @@ app = FastAPI(title="Tempera Console")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
 loader = RunLoader(ROOT / "runs")
 runner = RunnerService(ROOT)
+database = ConsoleDatabase(ROOT / "runs" / "console.sqlite3")
+
+
+def _user_id(request: Request) -> int | None:
+    return database.user_for_token(request.cookies.get("rein_session"))
+
+
+@app.post("/api/auth/register")
+def register(credentials: AuthRequest, response: Response):
+    try:
+        user_id = database.create_user(credentials.email, credentials.password)
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from error
+    token = database.session(user_id)
+    response.set_cookie("rein_session", token, httponly=True, samesite="lax", max_age=604800)
+    return {"user_id": user_id, "email": credentials.email.lower()}
+
+
+@app.post("/api/auth/login")
+def login(credentials: AuthRequest, response: Response):
+    user_id = database.authenticate(credentials.email, credentials.password)
+    if user_id is None:
+        raise HTTPException(401, "invalid email or password")
+    token = database.session(user_id)
+    response.set_cookie("rein_session", token, httponly=True, samesite="lax", max_age=604800)
+    return {"user_id": user_id, "email": credentials.email.lower()}
+
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    user_id = _user_id(request)
+    if user_id is None:
+        raise HTTPException(401, "login required")
+    return {"user_id": user_id}
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request, response: Response):
+    database.delete_session(request.cookies.get("rein_session"))
+    response.delete_cookie("rein_session")
+    return {"logged_out": True}
 
 
 def _scenario_paths():
@@ -39,6 +84,39 @@ def _scenario_paths():
 
 def _load_scenario(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _verification_input(payload: dict) -> tuple[list[dict], dict, str]:
+    """Normalize console verification input without bypassing the Judge."""
+    try:
+        request = VerificationRequest.model_validate(payload)
+    except ValidationError as error:
+        raise HTTPException(422, detail=error.errors()) from error
+
+    declared_scope = request.declared_scope
+    if request.evidence is not None:
+        evidence = [item.model_dump() for item in request.evidence]
+        source = "evidence"
+    elif request.simulations is not None or request.reward_info is not None:
+        evidence = get_evidence(request.model_dump(exclude_none=True))
+        source = "tau2_artifact"
+    else:
+        raise HTTPException(422, "payload must contain evidence or a tau2 artifact")
+    return evidence, declared_scope, source
+
+
+@app.post("/verify")
+def verify(payload: dict = Body(...)):
+    """Run the existing retail Judge against an uploaded artifact."""
+    evidence, declared_scope, source = _verification_input(payload)
+    verdict = evaluate_retail_evidence(evidence, declared_scope=declared_scope)
+    return {
+        "source": source,
+        "verdict": verdict,
+        "scope_map": build_scope_map(verdict, evidence),
+        "evidence": evidence,
+        "events": evidence_to_events(evidence),
+    }
 
 
 @app.get("/api/meta/scenarios")
@@ -136,7 +214,7 @@ def start_environment():
 
 
 @app.post("/api/runs/batch", status_code=202)
-def start_batch(config: RunConfig):
+def start_batch(config: RunConfig, request: Request):
     scenario_path = next(
         (path for path in _scenario_paths() if (_load_scenario(path).get("id") or path.parent.name) == config.scenario),
         None,
@@ -148,6 +226,7 @@ def start_batch(config: RunConfig):
         job_id = runner.start_replay_batch(config, ROOT / scenario["result_path"])
     else:
         job_id = runner.start_batch(config)
+    database.claim_runs(_user_id(request), runner.run_ids(job_id), config.scenario)
     return {"job_id": job_id}
 
 
@@ -174,13 +253,16 @@ def stop_batch(job_id: str):
 
 
 @app.get("/api/runs")
-def runs(scenario: str | None = None):
+def runs(request: Request, scenario: str | None = None):
+    user_id = _user_id(request)
     result = []
     for path in loader.dirs():
         summary = loader.load_summary(path)
         if not summary.scenario:
             continue
         if scenario and summary.scenario != scenario:
+            continue
+        if user_id is not None and database.owner(summary.run_id) != user_id:
             continue
         result.append(summary.model_dump())
         if len(result) == 200:
@@ -195,10 +277,32 @@ def _run_dir(run_id: str) -> Path:
     return path
 
 
+def _run_evidence_detail(path: Path) -> dict:
+    result = _read(path / "result.json", {}) or {}
+    evidence = result.get("evidence")
+    if not isinstance(evidence, list):
+        evidence = []
+    events = result.get("events")
+    if not isinstance(events, list):
+        events = evidence_to_events(evidence)
+    verdict = evaluate_retail_evidence(evidence, declared_scope=result.get("declared_scope") or {}) if evidence else None
+    return {
+        "evidence": evidence,
+        "events": events,
+        "verdict": verdict,
+        "scope_map": build_scope_map(verdict, evidence) if verdict else None,
+    }
+
+
 @app.get("/api/runs/{run_id}")
 def run_detail(run_id: str):
     path = _run_dir(run_id)
-    return {"summary": loader.load_summary(path).model_dump(), "overlay": loader.load_overlay(path).model_dump(), "live": loader.load_live_status(path)}
+    return {"summary": loader.load_summary(path).model_dump(), "overlay": loader.load_overlay(path).model_dump(), "live": loader.load_live_status(path), **_run_evidence_detail(path)}
+
+
+@app.get("/api/runs/{run_id}/evidence")
+def run_evidence(run_id: str):
+    return _run_evidence_detail(_run_dir(run_id))
 
 
 @app.delete("/api/runs/{run_id}")

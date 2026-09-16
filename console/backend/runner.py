@@ -21,6 +21,10 @@ class RunnerService:
         self.lock = Lock()
         self.executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="tempera-console")
 
+    def run_ids(self, job_id: str) -> list[str]:
+        with self.lock:
+            return [item["run_id"] for item in self.active_jobs[job_id]["runs"]]
+
     def start_batch(self, config: RunConfig) -> str:
         job_id = uuid4().hex[:8]
         runs = []

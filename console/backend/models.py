@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,26 @@ class RunConfig(BaseModel):
     enforce_policy: bool = False
     runs_per_worker: int = Field(1, ge=1, le=100)
     parallel_workers: int = Field(1, ge=1, le=8)
+
+
+class EvidenceItem(BaseModel):
+    type: str = Field(min_length=1)
+
+    model_config = {"extra": "allow"}
+
+
+class VerificationRequest(BaseModel):
+    evidence: list[EvidenceItem] | None = None
+    declared_scope: dict[str, Any] = Field(default_factory=dict)
+    simulations: list[dict[str, Any]] | None = None
+    reward_info: dict[str, Any] | None = None
+
+    model_config = {"extra": "allow"}
+
+
+class AuthRequest(BaseModel):
+    email: str = Field(min_length=3)
+    password: str = Field(min_length=8)
 
 
 class RunSummary(BaseModel):

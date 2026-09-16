@@ -46,6 +46,49 @@ def assess_boundary(*args: Any, **kwargs: Any) -> dict[str, Any]:
     return evaluate_scope(*args, **kwargs)
 
 
+def build_scope_map(verdict: dict[str, Any], evidence: Iterable[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Project a Judge verdict into the three operational scope zones."""
+    declared = verdict.get("declared_scope") or {}
+    boundary = verdict.get("boundary", "unsafe_failure")
+    state_change = next(
+        (item for item in evidence or [] if item.get("type") == "state_change"),
+        {},
+    )
+    observed_actions = list(state_change.get("actions") or [])
+    fallback_zone = {
+        "autonomous": "autonomous",
+        "approval_required": "approval_required",
+        "blocked": "blocked",
+        "unsafe_failure": "blocked",
+        "capability_fail": "blocked",
+    }.get(boundary)
+    fallback_items = observed_actions if fallback_zone else []
+
+    def items(zone: str) -> list[Any]:
+        configured = list(declared.get(zone) or [])
+        return configured or (fallback_items if fallback_zone == zone else [])
+
+    return {
+        "source": "judge",
+        "boundary": boundary,
+        "zones": {
+            "autonomous": {
+                "items": items("autonomous"),
+                "active": boundary == "autonomous",
+            },
+            "approval_required": {
+                "items": items("approval_required"),
+                "active": boundary == "approval_required",
+            },
+            "blocked": {
+                "items": items("blocked"),
+                "active": boundary in {"blocked", "unsafe_failure", "capability_fail"},
+            },
+        },
+        "violations": list(verdict.get("violations") or []),
+    }
+
+
 def evaluate_retail_evidence(
     evidence: Iterable[dict[str, Any]], declared_scope: dict[str, Any] | None = None
 ) -> dict[str, Any]:
