@@ -1,0 +1,50 @@
+:root {
+  --rein-bg: #10121a;
+  --rein-sidebar: #0c0e15;
+  --rein-panel: #171a24;
+  --rein-panel-deep: #11141d;
+  --rein-line: #292d3c;
+  --rein-line-soft: #232734;
+  --rein-text: #f1f1f7;
+  --rein-muted: #9599ad;
+  --rein-dim: #62697f;
+  --rein-purple: #ae9aff;
+  --rein-purple-soft: rgba(174,154,255,.11);
+  --rein-mint: #77dfb8;
+  --rein-amber: #edbd78;
+  --rein-red: #f08c9c;
+  --rein-radius: 12px;
+}
+
+body { background: var(--rein-bg); color: var(--rein-text); }
+
+/* Public and Console share the same product surfaces. */
+.public-home {
+  background: radial-gradient(ellipse at 78% 0, rgba(105,77,161,.09), transparent 42%), var(--rein-bg);
+  color: var(--rein-text);
+}
+.public-home .wrap { width: min(1280px, calc(100% - 64px)); }
+.public-home .nav { height: 72px; border-bottom: 1px solid var(--rein-line-soft); }
+.public-home .links { color: var(--rein-muted); }
+.public-home .btn { border-color: var(--rein-line); background: #1c202c; color: var(--rein-text); border-radius: 9px; }
+.public-home .btn.primary { color: #1b1434; background: linear-gradient(120deg,#b7a6ff,#a48bf5); border-color: #b29aff; }
+.public-home .hero { padding: 112px 0 128px; }
+.public-home .hero h1 { font-weight: 730; }
+.public-home .lead, .public-home .section-head p, .public-home .card p, .public-home .case p, .public-home .step p { color: var(--rein-muted); }
+.public-home .demo, .public-home .card, .public-home .case { border-color: var(--rein-line); background: linear-gradient(140deg,#191c27 0%,#161923 100%); }
+.public-home .demo-inner, .public-home .metric { border-color: var(--rein-line); background: var(--rein-panel-deep); }
+.public-home .section { border-top-color: var(--rein-line-soft); }
+.public-home .card { border-radius: var(--rein-radius); }
+.public-home .feature, .public-home .step { border-color: var(--rein-line); background: var(--rein-panel); }
+.public-home .kicker, .public-home .num, .public-home .step-num { color: var(--rein-purple); }
+.public-home .status { color: var(--rein-mint); background: rgba(119,223,184,.09); border-color: rgba(119,223,184,.13); }
+.public-home .footer { border-top-color: var(--rein-line-soft); color: var(--rein-dim); }
+
+.console-page .sidebar { background: var(--rein-sidebar); border-right-color: var(--rein-line-soft); }
+.console-page .main { background: radial-gradient(ellipse at 75% 0, rgba(105,77,161,.045), transparent 45%), var(--rein-bg); }
+.console-page .topbar { background: rgba(16,18,26,.93); border-bottom-color: var(--rein-line-soft); }
+.console-page .panel { border-color: var(--rein-line); border-radius: var(--rein-radius); }
+.console-page .btn { border-color: var(--rein-line); background: #1c202c; }
+.console-page .btn.primary { color: #1b1434; background: linear-gradient(120deg,#b7a6ff,#a48bf5); border-color: #b29aff; }
+.console-page .badge.safe { color: var(--rein-mint); background: rgba(119,223,184,.09); border-color: rgba(119,223,184,.13); }
+.console-page .badge.warning { color: var(--rein-amber); background: rgba(237,189,120,.10); border-color: rgba(237,189,120,.15); }
