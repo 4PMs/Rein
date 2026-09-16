@@ -86,6 +86,35 @@ def _load_scenario(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
+def _scenario_path(scenario_id: str) -> Path | None:
+    return next(
+        (path for path in _scenario_paths() if (_load_scenario(path).get("id") or path.parent.name) == scenario_id),
+        None,
+    )
+
+
+def _policy_path(scenario_id: str) -> Path:
+    scenario_path = _scenario_path(scenario_id)
+    if scenario_path is None:
+        raise HTTPException(404, "unknown scenario")
+    return scenario_path.parent / "policy.yaml"
+
+
+@app.get("/api/scenarios/{scenario_id}/policy")
+def get_policy(scenario_id: str):
+    path = _policy_path(scenario_id)
+    if not path.is_file():
+        return {"scenario": scenario_id, "policy": {}, "exists": False}
+    return {"scenario": scenario_id, "policy": yaml.safe_load(path.read_text(encoding="utf-8")) or {}, "exists": True}
+
+
+@app.put("/api/scenarios/{scenario_id}/policy")
+def save_policy(scenario_id: str, policy: dict = Body(...)):
+    path = _policy_path(scenario_id)
+    path.write_text(yaml.safe_dump(policy, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return {"scenario": scenario_id, "policy": policy, "saved": True}
+
+
 def _verification_input(payload: dict) -> tuple[list[dict], dict, str]:
     """Normalize console verification input without bypassing the Judge."""
     try:
@@ -215,13 +244,14 @@ def start_environment():
 
 @app.post("/api/runs/batch", status_code=202)
 def start_batch(config: RunConfig, request: Request):
-    scenario_path = next(
-        (path for path in _scenario_paths() if (_load_scenario(path).get("id") or path.parent.name) == config.scenario),
-        None,
-    )
+    scenario_path = _scenario_path(config.scenario)
     if scenario_path is None:
         raise HTTPException(400, "unknown scenario")
     scenario = _load_scenario(scenario_path)
+    if not config.policy:
+        policy_path = scenario_path.parent / "policy.yaml"
+        if policy_path.is_file():
+            config = config.model_copy(update={"policy": str(policy_path)})
     if scenario.get("result_path"):
         job_id = runner.start_replay_batch(config, ROOT / scenario["result_path"])
     else:

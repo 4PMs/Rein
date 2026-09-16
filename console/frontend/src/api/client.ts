@@ -7,6 +7,7 @@ export type RunConfig = { scenario: string; model?: string; provider?: string; r
 export type RunDetail = { summary: RunSummary; overlay: Record<string, unknown>; live: Record<string, unknown> | null; evidence?: Record<string, unknown>[]; verdict?: Record<string, unknown> | null; scope_map?: Record<string, unknown> | null; events?: ExecutionEvent[] };
 export type VerifyResponse = { source: string; verdict: Record<string, unknown>; scope_map: Record<string, unknown>; evidence: Record<string, unknown>[]; events: ExecutionEvent[] };
 export type AuthUser = { user_id: number; email?: string };
+export type PolicyResponse = { scenario: string; policy: Record<string, unknown>; exists?: boolean; saved?: boolean };
 
 const staticMode = import.meta.env.VITE_STATIC_MODE === "true";
 const apiBase = (import.meta.env.VITE_API_BASE || simulationRuntimeConfig.apiBaseFallback).replace(/\/$/, "");
@@ -33,6 +34,12 @@ export const api = {
   staticMode,
   async getScenarios(): Promise<Scenario[]> {
     return staticMode ? staticJson<Scenario[]>("/demo/scenarios.json") : request<Scenario[]>("/api/meta/scenarios");
+  },
+  async getPolicy(scenario: string): Promise<PolicyResponse> {
+    return request<PolicyResponse>(`/api/scenarios/${encodeURIComponent(scenario)}/policy`);
+  },
+  async savePolicy(scenario: string, policy: Record<string, unknown>): Promise<PolicyResponse> {
+    return request<PolicyResponse>(`/api/scenarios/${encodeURIComponent(scenario)}/policy`, { method: "PUT", body: JSON.stringify(policy) });
   },
   async verify(artifact: Record<string, unknown>): Promise<VerifyResponse> {
     return request<VerifyResponse>("/verify", { method: "POST", body: JSON.stringify(artifact) });
