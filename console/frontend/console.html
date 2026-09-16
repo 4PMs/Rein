@@ -609,7 +609,8 @@
     .public-home[hidden] { display: none; }
     .public-shell { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
     .public-nav { height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-    .public-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; letter-spacing: -.05em; font-size: 22px; }
+    .public-brand { display: inline-flex; align-items: center; font-weight: 750; letter-spacing: -.05em; font-size: 22px; }
+    .public-brand img { display: block; width: 112px; height: 38px; object-fit: contain; mix-blend-mode: screen; }
     .public-brand-mark { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid #594d86; border-radius: 10px; color: #b7a6ff; background: #201a35; font-size: 17px; }
     .public-nav-links { display: flex; align-items: center; gap: 28px; color: #a3a0b4; font-size: 12px; }
     .public-nav-links a:hover { color: #fff; }
@@ -661,17 +662,20 @@
     .console-page #public-home { display: none; }
     /* Shared Rein visual language: calm canvas, one hierarchy, consistent surfaces. */
     body.console-page { background: #0b0e14; }
-    .console-page .sidebar { background: #0d1017; border-right-color: #202632; }
-    .console-page .main { background: radial-gradient(ellipse at 80% 0,rgba(112,86,208,.08),transparent 42%),#0b0e14; }
-    .console-page .topbar { height: 84px; background: rgba(11,14,20,.94); border-bottom-color: #202632; }
+    /* Console follows the public site's same 8px rhythm, surfaces and CTA. */
+    .console-page .sidebar { background: #10121a; border-right-color: #292d3c; padding-top: 19px; }
+    .console-page .brand { padding: 0 12px; margin-bottom: 27px; }
+    .console-page .brand-logo { width: 112px; height: 38px; object-fit: contain; mix-blend-mode: screen; }
+    .console-page .main { background: radial-gradient(ellipse at 80% 0,rgba(174,154,255,.07),transparent 42%),#10121a; }
+    .console-page .topbar { height: 76px; padding-inline: 32px; background: rgba(16,18,26,.92); border-bottom-color: #292d3c; }
     .console-page .page { max-width: 1280px; padding: 42px 40px 28px; }
     .console-page .page-heading { margin-bottom: 32px; }
     .console-page .page-heading h1 { font-size: clamp(28px,3vw,44px); letter-spacing: -.07em; }
-    .console-page .panel { border-radius: 12px; border-color: #2a3040; }
+    .console-page .panel { border-radius: 10px; border-color: #292d3c; }
     .console-page .kpi-grid, .console-page .dashboard-kpi-area { gap: 14px; }
     .console-page .kpi-card { min-height: 172px; }
-    .console-page .scope-overview { background: linear-gradient(135deg,#171827,#11141b); }
-    .console-page .btn.primary { color: #171326; background: #b8a6ff; border-color: #b8a6ff; }
+    .console-page .scope-overview { background: linear-gradient(135deg,#191c27,#151822); }
+    .console-page .btn.primary { color: #171326; background: linear-gradient(120deg,#b7a6ff,#a48bf5); border-color: #b29aff; }
     .console-page .badge.safe { color: #7be0b9; background: #17362e; border-color: #2c604d; }
     .console-page .badge.warning { color: #f2c98d; background: #33281d; border-color: #624d31; }
     @media (max-width: 780px) { .public-nav-links { display: none; } .public-hero { padding: 66px 0 80px; } .public-hero-grid { grid-template-columns: 1fr; gap: 48px; } .public-feature-grid { grid-template-columns: 1fr; } .public-footer { flex-direction: column; } }
@@ -682,9 +686,9 @@
   <div id="public-home" class="public-home">
     <div class="public-shell">
       <nav class="public-nav" aria-label="Public navigation">
-        <a class="public-brand" href="/"><span class="public-brand-mark">r</span><span>rein</span></a>
+        <a class="public-brand" href="/"><img src="/assets/rein-logo.png" alt="Rein" /></a>
         <div class="public-nav-links"><a href="#product">Product</a><a href="#technology">Technology</a><a href="#docs">Docs</a><a href="#company">Company</a></div>
-        <div class="public-nav-actions"><a class="public-link-btn" href="/?console=1">Sign in</a><a class="public-btn primary" href="/?console=1">Open Console <span>↗</span></a></div>
+        <div class="public-nav-actions"><a class="public-btn primary" href="/?console=1">Try Rein <span>↗</span></a></div>
       </nav>
 
       <section class="public-hero" aria-labelledby="public-home-title">
@@ -1096,14 +1100,15 @@
       };
       const simulationData = window.ReinSimulationData;
       if (!simulationData) throw new Error('Simulation data module is unavailable');
+      console.info('API 키가 없어서 현재는 데모만 가능합니다.');
       const { templates, defaultAgents, scenarios, judgementPolicy, runtimeConfig } = simulationData;
       const savedAgents = storage.get('agents', []);
       let agents = Array.isArray(savedAgents) && savedAgents.length
         ? savedAgents.filter(a => a && typeof a.id === 'string' && typeof a.name === 'string' && templates[a.type]).slice(0, 30)
         : defaultAgents;
       if (!agents.length) agents = defaultAgents;
-      let profile = storage.get('profile', { name: 'Admin', workspace: '한빛커머스', reduce: false });
-      if (!profile || typeof profile !== 'object') profile = { name: 'Admin', workspace: '한빛커머스', reduce: false };
+      let profile = storage.get('profile', { name: 'Admin', workspace: 'Workspace', reduce: false });
+      if (!profile || typeof profile !== 'object') profile = { name: 'Admin', workspace: 'Workspace', reduce: false };
       let history = storage.get('history', []);
       if (!Array.isArray(history)) history = [];
       history = history.filter(r => r && r.agent && r.scores && r.date).slice(0, 12);
@@ -1178,7 +1183,7 @@
 
       function applyProfile() {
         const name = typeof profile.name === 'string' && profile.name.trim() ? profile.name.slice(0, 30) : 'Admin';
-        const workspace = typeof profile.workspace === 'string' && profile.workspace.trim() ? profile.workspace.slice(0, 30) : '한빛커머스';
+        const workspace = typeof profile.workspace === 'string' && profile.workspace.trim() ? profile.workspace.slice(0, 30) : 'Workspace';
         profile.name = name; profile.workspace = workspace;
         $('profileName').textContent = name;
         $('profileAvatar').textContent = [...name][0].toUpperCase();
