@@ -77,9 +77,7 @@
     .panel { background: linear-gradient(140deg, #191c27 0%, #161923 100%); border: 1px solid var(--line); border-radius: var(--radius); }
     .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 50; display: flex; flex-direction: column; width: var(--sidebar-width); padding: 28px 16px 20px; background: var(--sidebar); border-right: 1px solid var(--line-soft); }
     .brand { display: flex; align-items: center; gap: 11px; padding: 0 12px; margin-bottom: 36px; background: transparent; text-align: left; }
-    .brand-mark { width: 35px; height: 39px; color: var(--purple); }
-    .brand-name { font-size: 31px; font-weight: 750; letter-spacing: -.06em; line-height: 1; }
-    .brand-name span { display: block; color: var(--dim); font-size: 9px; font-weight: 600; letter-spacing: .18em; margin-top: 7px; }
+    .brand-logo { display: block; width: 220px; height: 76px; object-fit: cover; object-position: center; }
     .workspace-picker { display: flex; align-items: center; gap: 10px; background: #171a23; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 0 3px 28px; text-align: left; width: calc(100% - 6px); }
     .workspace-avatar { width: 29px; height: 29px; display: grid; place-items: center; color: #cbd0dd; background: #2c3040; border-radius: 7px; font-size: 12px; font-weight: 700; }
     .workspace-picker .workspace-copy { flex: 1; min-width: 0; }
@@ -644,12 +642,8 @@
   <div id="drawerOverlay" class="drawer-overlay"></div>
 
   <aside id="sidebar" class="sidebar" aria-label="주 메뉴">
-    <button class="brand" data-page="dashboard" aria-label="Rein Admin 대시보드">
-      <svg class="brand-mark" viewBox="0 0 36 40" fill="none" aria-hidden="true">
-        <path d="M5 34V6h12c8 0 13 4 13 10 0 5-3 8-8 10l9 8H20L9 23h8c4 0 6-2 6-6s-2-5-6-5h-5v22H5Z" fill="currentColor"/>
-        <path d="M5 34h7V12H5v22Z" fill="#ccbaff"/>
-      </svg>
-      <span class="brand-name">rein<span>ADMIN CONSOLE</span></span>
+    <button class="brand" data-page="dashboard" aria-label="Rein 대시보드">
+      <img class="brand-logo" src="/assets/rein-logo.png" alt="Rein" />
     </button>
 
     <button class="workspace-picker" id="workspaceButton" aria-label="워크스페이스 설정">
@@ -802,22 +796,6 @@
           </div>
         </section>
       </div>
-
-      <section class="panel scope-overview" aria-labelledby="scopeOverviewTitle">
-        <div class="scope-overview-header">
-          <div class="scope-overview-title">
-            <svg class="icon"><use href="#i-scope"/></svg>
-            <div><div class="eyebrow">Scope · The autonomy boundary</div><h2 id="scopeOverviewTitle">AI가 할 수 있는 일과, 멈춰야 할 일.</h2></div>
-          </div>
-          <button class="btn small" data-page="sim">자율성의 경계 테스트하기<svg class="icon sm"><use href="#i-external"/></svg></button>
-        </div>
-        <div class="scope-path">
-          <div class="scope-zone"><span class="zone-icon"><svg class="icon"><use href="#i-check"/></svg></span><div><strong>자율 실행 · Within Scope</strong><p>₩50,000 이하의 정책 내 환불</p></div></div>
-          <div class="scope-zone review"><span class="zone-icon"><svg class="icon"><use href="#i-user"/></svg></span><div><strong>승인 필요 · Human Approval</strong><p>₩50,000 초과 또는 예외 정책 요청</p></div></div>
-          <div class="scope-zone block"><span class="zone-icon"><svg class="icon"><use href="#i-lock"/></svg></span><div><strong>실행 차단 · Out of Scope</strong><p>고객 데이터 반출 · 수취 계좌 변경</p></div></div>
-        </div>
-        <div class="scope-overview-note"><span>Scope는 AI의 능력이 아니라, 허용된 행동과 조건의 범위입니다.</span><span>기준 에이전트: 환불 처리 AI · 정책 v2.4</span></div>
-      </section>
 
       <footer class="page-footer"><span><span class="footer-wordmark">rein</span>Controlled autonomy. Measurable impact.</span><span>데모 데이터 · 1일 8시간 기준 · 비용 및 연간 절감액은 예시 추정치입니다.</span></footer>
     </section>
@@ -1733,7 +1711,9 @@
           const evidence = demo.evidence || [];
           $('scenarioCount').textContent = `${evidence.length}개 evidence`;
           for (let i = 0; i < evidence.length; i++) { add(evidence[i], i, evidence.length); await wait(260); }
-          const cap = demo.capability === 'pass' ? 96 : 54, res = demo.restraint === 'pass' ? 98 : 42;
+          const verdict = window.ReinEvaluation ? window.ReinEvaluation.evaluateEvidence(evidence) : { capability: demo.capability, restraint: demo.restraint, boundary: demo.boundary, violations: [] };
+          demo.capability = verdict.capability; demo.restraint = verdict.restraint; demo.boundary = verdict.boundary; demo.restraint_violation = verdict.violations.length > 0;
+          const cap = verdict.capability === 'pass' ? 96 : 54, res = verdict.restraint === 'pass' ? 98 : 42;
           $('capVal').textContent = cap; $('resVal').textContent = res; $('gaugeCap').style.strokeDashoffset = 239 * (1 - cap / 100); $('gaugeRes').style.strokeDashoffset = 239 * (1 - res / 100);
           $('boundaryTitle').textContent = demo.boundary === 'autonomous' ? '검증된 자율 실행 범위' : '사람 승인 또는 실행 차단 필요';
           $('boundaryValue').textContent = demo.boundary === 'autonomous' ? 'AUTONOMOUS' : 'UNSAFE FAILURE';
@@ -1783,5 +1763,6 @@
       }
     });
   </script>
+  <script type="module" src="/src/domain/evaluateEvidence.ts"></script>
 </body>
 </html>
