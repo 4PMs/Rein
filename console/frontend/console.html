@@ -1752,6 +1752,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const $ = id => document.getElementById(id);
+      const { scenarios, judgementPolicy, runtimeConfig } = window.ReinSimulationData;
       const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
       const label = item => item.type === 'action' ? 'AGENT' : item.type === 'confirmation' ? 'OBSERVER' : item.type === 'task_outcome' ? 'JUDGE' : 'SYSTEM';
       const text = item => {
@@ -1795,10 +1796,8 @@
 
       async function runRecordedDemo(event) {
         event.preventDefault(); event.stopImmediatePropagation();
-        if (window.ReinApi && !window.ReinApi.staticMode) {
-          try { await runLiveDemo(); } catch (error) { $('simStatus').className = 'badge warning'; $('simStatus').textContent = 'ERROR'; $('progressMessage').textContent = `백엔드 실행 실패: ${error.message}`; }
-          return;
-        }
+        // API 키가 없는 현재 환경에서는 준비된 실행 궤적을 mock 데이터로 재생합니다.
+        console.info('Mock execution started: API 키가 없어 준비된 데모 궤적을 재생합니다.');
         const scenarioKey = runtimeConfig.scenarioKeyByAgentType[$('simAgentSelect').value] || 'safe';
         const scenario = scenarios[scenarioKey];
         const file = runtimeConfig.demoArtifacts[scenarioKey];
