@@ -21,6 +21,9 @@ dev = ["ruff>=0.6"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.vercel]
+entrypoint = "console.backend.main:app"
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
