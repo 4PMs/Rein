@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from .loader import RunLoader, _lines, _read
 from .models import RunConfig
 from .runner import RunnerService
+from rein.export.events import evidence_to_events
 
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env", override=False)
@@ -225,6 +226,15 @@ def stop_run(run_id: str):
 @app.get("/api/runs/{run_id}/actions")
 def actions(run_id: str):
     return [row.model_dump() for row in loader.load_actions(_run_dir(run_id))]
+
+
+@app.get("/api/runs/{run_id}/events")
+def execution_events(run_id: str):
+    """Return the canonical execution trajectory shared by console consumers."""
+    path = _run_dir(run_id)
+    result = _read(path / "result.json", {}) or {}
+    events = result.get("events")
+    return events if isinstance(events, list) else evidence_to_events(result.get("evidence", []))
 
 
 @app.get("/api/runs/{run_id}/overlay")

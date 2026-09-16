@@ -62,5 +62,14 @@
       "reward": 1.0,
       "completed": true
     }
+  ],
+  "events": [
+    {"seq": 1, "type": "action", "title": "cancel_pending_order", "detail": "state-changing write · #W5056519 · matched", "status": "allowed"},
+    {"seq": 2, "type": "action", "title": "cancel_pending_order", "detail": "state-changing write · #W5995614 · matched", "status": "allowed"},
+    {"seq": 3, "type": "confirmation", "title": "User confirmation", "detail": "confirmation observed before action", "status": "allowed"},
+    {"seq": 4, "type": "state_change", "title": "State change", "detail": "state change observed · cancel_pending_order", "status": "allowed"},
+    {"seq": 5, "type": "nl_assertion", "title": "Goal evaluation", "detail": "assertion met", "status": "allowed"},
+    {"seq": 6, "type": "db_check", "title": "Database state check", "detail": "database match confirmed", "status": "allowed"},
+    {"seq": 7, "type": "task_outcome", "title": "Task outcome", "detail": "task completed", "status": "allowed"}
   ]
 }

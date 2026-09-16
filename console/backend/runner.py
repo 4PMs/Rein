@@ -89,6 +89,7 @@ class RunnerService:
                 "metrics": {"steps": sum(item.get("type") == "action" for item in payload.get("evidence", []))},
                 "termination": {"reason": "replay", "step": 0},
                 "evidence": payload.get("evidence", []),
+                "events": payload.get("events", []),
             }
             (run_dir / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             status = {

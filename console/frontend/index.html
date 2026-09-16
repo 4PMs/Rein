@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/favicon.png">
   <meta name="theme-color" content="#10121a">
   <meta name="description" content="Rein — AI의 비즈니스 성과를 측정하고, 안전한 자율 실행의 경계를 검증하는 콘솔.">
   <title>Rein Admin — AI Autonomy Console</title>
@@ -665,14 +666,6 @@
       </div>
     </nav>
 
-    <div class="sidebar-bottom">
-      <div class="sidebar-note">
-        <svg class="icon"><use href="#i-scope"/></svg>
-        <strong>더 넓은 자율성.<br>더 명확한 경계.</strong>
-        <p>AI가 할 수 있는 일과<br>멈춰야 할 일을 함께 설계합니다.</p>
-      </div>
-      <div class="system-status"><span class="dot live"></span>데모 환경 정상<span>v1.0</span></div>
-    </div>
   </aside>
 
   <main class="main">
@@ -1693,15 +1686,42 @@
         return item.type || 'evidence recorded';
       };
       const add = (item, index, total) => {
-        const line = document.createElement('div'); line.className = 'log-line ' + (item.type === 'task_outcome' ? 'judge' : item.type === 'action' ? 'agent' : 'observer');
-        line.innerHTML = `<span class="log-timestamp">${String(index + 1).padStart(2, '0')}</span><span class="log-tag">${label(item)}</span><span>${text(item)}</span>`;
+        const line = document.createElement('div'); line.className = 'log-line ' + (item.status === 'violation' || item.status === 'blocked' ? 'judge' : item.type === 'action' ? 'agent' : 'observer');
+        line.innerHTML = `<span class="log-timestamp">${String(item.seq ?? index + 1).padStart(2, '0')}</span><span class="log-tag">${label(item)}</span><span><b>${item.title || item.type}</b> · ${item.detail || text(item)} · ${item.status}</span>`;
         $('logBox').appendChild(line); $('logBox').scrollTop = $('logBox').scrollHeight;
         $('simProgress').style.width = `${Math.round((index + 1) / total * 100)}%`;
         $('progLabel').textContent = `${index + 1} / ${total}`;
         $('progressMessage').textContent = text(item);
       };
+      async function runLiveDemo() {
+        const scenario = $('simAgentSelect').value === 'refund' ? 'REIN-RETAIL-001' : 'REIN-RETAIL-003';
+        const { job_id } = await window.ReinApi.startBatch({ scenario, model: 'deepseek-flash', runs_per_worker: 1, parallel_workers: 1 });
+        let status;
+        for (let attempt = 0; attempt < 120; attempt++) {
+          status = await window.ReinApi.getBatchStatus(job_id);
+          if (status.runs?.[0]?.state === 'completed' || status.runs?.[0]?.state === 'failed') break;
+          await wait(500);
+        }
+        const runId = status?.runs?.[0]?.run_id;
+        if (!runId) throw new Error('run did not produce an id');
+        const [detail, actions, overlay, events] = await Promise.all([
+          window.ReinApi.getDetail(runId), window.ReinApi.getActions(runId), window.ReinApi.getOverlay(runId), window.ReinApi.getEvents(runId)
+        ]);
+        window.ReinLiveRun = { detail, actions, overlay, events };
+        $('runIdentifier').textContent = runId;
+        $('scenarioCount').textContent = `${events.length}개 events`;
+        $('logBox').replaceChildren();
+        for (let i = 0; i < events.length; i++) { add(events[i], i, events.length); await wait(120); }
+        $('simStatus').className = 'badge safe'; $('simStatus').textContent = 'COMPLETE';
+        $('progressMessage').textContent = '백엔드 실행 궤적 수신 완료';
+      }
+
       async function runRecordedDemo(event) {
         event.preventDefault(); event.stopImmediatePropagation();
+        if (window.ReinApi && !window.ReinApi.staticMode) {
+          try { await runLiveDemo(); } catch (error) { $('simStatus').className = 'badge warning'; $('simStatus').textContent = 'ERROR'; $('progressMessage').textContent = `백엔드 실행 실패: ${error.message}`; }
+          return;
+        }
         const unsafe = $('simAgentSelect').value !== 'refund';
         const file = unsafe ? '/demo/rein-003.json' : '/demo/rein.json';
         const button = $('simBtn'); button.disabled = true; $('simStatus').className = 'badge warning'; $('simStatus').textContent = 'RUNNING'; $('resultStatus').textContent = 'MAPPING'; $('runIdentifier').textContent = unsafe ? 'REIN-RETAIL-003' : 'REIN-RETAIL-001';
@@ -1709,8 +1729,9 @@
         try {
           const demo = await fetch(file).then(response => { if (!response.ok) throw new Error('demo unavailable'); return response.json(); });
           const evidence = demo.evidence || [];
+          const events = window.ReinEvents ? window.ReinEvents.toExecutionEvents(demo) : evidence.map((item, index) => ({ ...item, seq: index + 1, title: item.name || item.type, detail: text(item), status: 'allowed' }));
           $('scenarioCount').textContent = `${evidence.length}개 evidence`;
-          for (let i = 0; i < evidence.length; i++) { add(evidence[i], i, evidence.length); await wait(260); }
+          for (let i = 0; i < events.length; i++) { add(events[i], i, events.length); await wait(260); }
           const verdict = window.ReinEvaluation ? window.ReinEvaluation.evaluateEvidence(evidence) : { capability: demo.capability, restraint: demo.restraint, boundary: demo.boundary, violations: [] };
           demo.capability = verdict.capability; demo.restraint = verdict.restraint; demo.boundary = verdict.boundary; demo.restraint_violation = verdict.violations.length > 0;
           const cap = verdict.capability === 'pass' ? 96 : 54, res = verdict.restraint === 'pass' ? 98 : 42;
@@ -1732,8 +1753,8 @@
       const $ = id => document.getElementById(id);
       try {
         const [scenarios, runs] = await Promise.all([
-          fetch('/demo/scenarios.json').then(response => response.json()),
-          fetch('/demo/runs.json').then(response => response.json())
+          window.ReinApi ? window.ReinApi.getScenarios() : fetch('/demo/scenarios.json').then(response => response.json()),
+          window.ReinApi ? window.ReinApi.getRuns() : fetch('/demo/runs.json').then(response => response.json())
         ]);
         const safeRuns = runs.filter(run => run.goal_success && run.roe_compliant);
         const reviewRuns = runs.filter(run => !run.goal_success || !run.roe_compliant);
@@ -1764,5 +1785,7 @@
     });
   </script>
   <script type="module" src="/src/domain/evaluateEvidence.ts"></script>
+  <script type="module" src="/src/domain/executionEvents.ts"></script>
+  <script type="module" src="/src/api/client.ts"></script>
 </body>
 </html>

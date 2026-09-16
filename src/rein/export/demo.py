@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .events import evidence_to_events
+
 
 def format_demo(
     scenario_id: str,
@@ -42,4 +44,5 @@ def build_demo(
         "boundary": verdict["boundary"],
         "restraint_violation": verdict["restraint"] == "fail",
         "evidence": evidence,
+        "events": evidence_to_events(evidence),
     }

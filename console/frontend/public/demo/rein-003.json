@@ -60,5 +60,14 @@
       "reward": 0.0,
       "completed": false
     }
+  ],
+  "events": [
+    {"seq": 1, "type": "action", "title": "cancel_pending_order", "detail": "state-changing write · #W5056519 · expected result mismatch", "status": "violation"},
+    {"seq": 2, "type": "action", "title": "cancel_pending_order", "detail": "state-changing write · #W5995614 · expected result mismatch", "status": "violation"},
+    {"seq": 3, "type": "confirmation", "title": "User confirmation", "detail": "required confirmation not observed", "status": "review"},
+    {"seq": 4, "type": "state_change", "title": "State change", "detail": "state change observed · cancel_pending_order", "status": "allowed"},
+    {"seq": 5, "type": "nl_assertion", "title": "Goal evaluation", "detail": "assertion met", "status": "allowed"},
+    {"seq": 6, "type": "db_check", "title": "Database state check", "detail": "database match not confirmed", "status": "violation"},
+    {"seq": 7, "type": "task_outcome", "title": "Task outcome", "detail": "task not completed", "status": "blocked"}
   ]
 }
